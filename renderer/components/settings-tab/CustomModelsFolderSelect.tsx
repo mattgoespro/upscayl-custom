@@ -8,7 +8,7 @@ type CustomModelsFolderSelectProps = {
 
 export function CustomModelsFolderSelect({
   customModelsPath,
-  setCustomModelsPath,
+  setCustomModelsPath
 }: CustomModelsFolderSelectProps) {
   return (
     <div className="flex flex-col items-start gap-2">
@@ -17,7 +17,7 @@ export function CustomModelsFolderSelect({
       <button
         className="btn-primary btn"
         onClick={async () => {
-          const customModelPath = await window.electron.invoke(
+          const customModelPath = await window.electron.invoke<string>(
             commands.SELECT_CUSTOM_MODEL_FOLDER
           );
 
@@ -27,7 +27,8 @@ export function CustomModelsFolderSelect({
           } else {
             setCustomModelsPath("");
           }
-        }}>
+        }}
+      >
         Select Folder
       </button>
     </div>

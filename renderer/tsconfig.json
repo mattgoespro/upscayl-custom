@@ -25,6 +25,6 @@
     "**/*.tsx",
     "../app.module.ts",
     "../common/**/*"
-  ],
+, "localStorage"  ],
   "exclude": ["node_modules"]
 }

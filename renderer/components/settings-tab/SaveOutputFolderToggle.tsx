@@ -19,6 +19,7 @@ export function SaveOutputFolderToggle({
         type="checkbox"
         className="toggle"
         checked={rememberOutputFolder}
+        onChange={() => {}}
         onClick={() => {
           setRememberOutputFolder((oldValue) => {
             if (oldValue === true) {

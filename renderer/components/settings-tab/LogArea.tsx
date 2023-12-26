@@ -6,11 +6,7 @@ type LogAreaProps = {
   logData: string[];
 };
 
-export function LogArea({
-  copyOnClickHandler,
-  isCopied,
-  logData,
-}: LogAreaProps) {
+export function LogArea({ copyOnClickHandler, isCopied, logData }: LogAreaProps) {
   return (
     <div className="relative flex flex-col gap-2">
       <div className="flex items-center gap-2">
@@ -20,12 +16,14 @@ export function LogArea({
         </button>
       </div>
       <code className="rounded-btn rounded-r-none relative flex h-52 max-h-52 flex-col gap-3 overflow-y-auto break-all bg-base-200 p-4 text-xs">
-        {logData.length === 0 && (
-          <p className="text-base-content/70">No logs to show</p>
-        )}
+        {logData.length === 0 && <p className="text-base-content/70">No logs to show</p>}
 
-        {logData.map((logLine: any) => {
-          return <p className="">{logLine}</p>;
+        {logData.map((logLine, index) => {
+          return (
+            <p key={index} className="">
+              {logLine}
+            </p>
+          );
         })}
       </code>
     </div>

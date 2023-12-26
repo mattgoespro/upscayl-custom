@@ -1,8 +1,10 @@
 import React, { useEffect } from "react";
 
+export type OverwriteToggleFn = (overwrite: boolean | OverwriteToggleFn) => void;
+
 type OverwriteToggleProps = {
   overwrite: boolean;
-  setOverwrite: (arg: any) => void;
+  setOverwrite: OverwriteToggleFn;
 };
 
 const OverwriteToggle = ({ overwrite, setOverwrite }: OverwriteToggleProps) => {
@@ -21,17 +23,17 @@ const OverwriteToggle = ({ overwrite, setOverwrite }: OverwriteToggleProps) => {
     <div className="flex flex-col gap-2">
       <p className="text-sm font-medium">OVERWRITE PREVIOUS UPSCALE</p>
       <p className="text-xs text-base-content/80">
-        If enabled, Upscayl will process the image again instead of loading it
-        directly.
+        If enabled, Upscayl will process the image again instead of loading it directly.
       </p>
       <input
         type="checkbox"
         className="toggle"
         checked={overwrite}
+        onChange={() => {}}
         onClick={() => {
           setOverwrite((oldValue: boolean) => {
             if (oldValue) {
-              localStorage.removeItem("overwrite");
+              localStorage.removeItem("");
               return false;
             } else {
               return true;

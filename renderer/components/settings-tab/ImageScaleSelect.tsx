@@ -1,8 +1,11 @@
 import React from "react";
+import { HTMLInputChangeEvent } from "@/model/changeEvents";
+
+type Scale = "4" | "2" | "3";
 
 type ImageScaleSelectProps = {
-  scale: "4" | "2" | "3";
-  setScale: (arg: "4" | "2" | "3") => void;
+  scale: Scale;
+  setScale: (scale: Scale) => void;
 };
 
 export function ImageScaleSelect({ scale, setScale }: ImageScaleSelectProps) {
@@ -10,7 +13,7 @@ export function ImageScaleSelect({ scale, setScale }: ImageScaleSelectProps) {
     <div>
       <div className="flex flex-row gap-1">
         <p className="text-sm font-medium">IMAGE SCALE</p>
-        {/* 
+        {/*
         <p className="badge-primary badge text-[10px] font-medium">
           EXPERIMENTAL
         </p> */}
@@ -20,8 +23,8 @@ export function ImageScaleSelect({ scale, setScale }: ImageScaleSelectProps) {
         min="1"
         max="4"
         value={scale}
-        onChange={(e: any) => {
-          setScale(e.target.value.toString());
+        onChange={(e: HTMLInputChangeEvent) => {
+          setScale(e.target.value.toString() as Scale);
         }}
         step="1"
         className="range range-primary mt-2"

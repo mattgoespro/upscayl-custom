@@ -1,27 +1,27 @@
-import { ThemeSelect } from "./ThemeSelect";
-import { SaveOutputFolderToggle } from "./SaveOutputFolderToggle";
-import { GpuIdInput } from "./GpuIdInput";
-import { CustomModelsFolderSelect } from "./CustomModelsFolderSelect";
-import { LogArea } from "./LogArea";
-import { ImageScaleSelect } from "./ImageScaleSelect";
-import { ImageFormatSelect } from "./ImageFormatSelect";
-import { DonateButton } from "./DonateButton";
-import React, { useEffect, useState } from "react";
-import { themeChange } from "theme-change";
 import { useAtom, useAtomValue } from "jotai";
+import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { themeChange } from "theme-change";
+import { featureFlags } from "@common/feature-flags";
+import { modelsListAtom } from "../../atoms/modelsListAtom";
 import {
   customModelsPathAtom,
   noImageProcessingAtom,
-  scaleAtom,
+  scaleAtom
 } from "../../atoms/userSettingsAtom";
-import { modelsListAtom } from "../../atoms/modelsListAtom";
+import { UpscaylCloudModal } from "../UpscaylCloudModal";
 import useLog from "../hooks/useLog";
 import { CompressionInput } from "./CompressionInput";
-import OverwriteToggle from "./OverwriteToggle";
-import { UpscaylCloudModal } from "../UpscaylCloudModal";
-import { ResetSettings } from "./ResetSettings";
+import { CustomModelsFolderSelect } from "./CustomModelsFolderSelect";
+import { ImageFormatSelect } from "./ImageFormatSelect";
+import { ImageScaleSelect } from "./ImageScaleSelect";
+import { LogArea } from "./LogArea";
+import OutputMetadataSuffixToggle from "./OutputMetadataSuffixToggle";
+import { OutputSuffixInput } from "./OutputSuffixInput";
+import OverwriteToggle, { OverwriteToggleFn } from "./OverwriteToggle";
 import ProcessImageToggle from "./ProcessImageToggle";
-import { featureFlags } from "@common/feature-flags";
+import { ResetSettings } from "./ResetSettings";
+import { SaveOutputFolderToggle } from "./SaveOutputFolderToggle";
+import { ThemeSelect } from "./ThemeSelect";
 
 interface IProps {
   batchMode: boolean;
@@ -34,7 +34,11 @@ interface IProps {
   setGpuId: React.Dispatch<React.SetStateAction<string>>;
   logData: string[];
   overwrite: boolean;
-  setOverwrite: (arg: any) => void;
+  setOverwrite: OverwriteToggleFn;
+  outputSuffix: string;
+  setOutputSuffix: (outputSuffix: string) => void;
+  outputMetadataSuffix: boolean;
+  setOutputMetadataSuffix: Dispatch<SetStateAction<boolean>>;
   os: "linux" | "mac" | "win" | undefined;
   show: boolean;
   setShow: React.Dispatch<React.SetStateAction<boolean>>;
@@ -46,25 +50,27 @@ function SettingsTab({
   setModel,
   compression,
   setCompression,
-  gpuId,
-  setGpuId,
   saveImageAs,
   setSaveImageAs,
   logData,
   overwrite,
   setOverwrite,
-  os,
+  outputSuffix,
+  setOutputSuffix,
+  outputMetadataSuffix,
+  setOutputMetadataSuffix,
+  os: _os,
   show,
   setShow,
-  setDontShowCloudModal,
+  setDontShowCloudModal
 }: IProps) {
   // STATES
-  const [currentModel, setCurrentModel] = useState<{
+  const [_currentModel, setCurrentModel] = useState<{
     label: string;
     value: string;
   }>({
     label: null,
-    value: null,
+    value: null
   });
   const [rememberOutputFolder, setRememberOutputFolder] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -72,9 +78,7 @@ function SettingsTab({
   const [customModelsPath, setCustomModelsPath] = useAtom(customModelsPathAtom);
   const modelOptions = useAtomValue(modelsListAtom);
   const [scale, setScale] = useAtom(scaleAtom);
-  const [noImageProcessing, setNoImageProcessing] = useAtom(
-    noImageProcessingAtom
-  );
+  const [noImageProcessing, setNoImageProcessing] = useAtom(noImageProcessingAtom);
 
   const { logit } = useLog();
 
@@ -86,10 +90,7 @@ function SettingsTab({
       localStorage.setItem("saveImageAs", "png");
     } else {
       const currentlySavedImageFormat = localStorage.getItem("saveImageAs");
-      logit(
-        "⚙️ Getting saveImageAs from localStorage: ",
-        currentlySavedImageFormat
-      );
+      logit("⚙️ Getting saveImageAs from localStorage: ", currentlySavedImageFormat);
       setSaveImageAs(currentlySavedImageFormat);
     }
 
@@ -102,46 +103,26 @@ function SettingsTab({
       let currentlySavedModel = JSON.parse(
         localStorage.getItem("model")
       ) as (typeof modelOptions)[0];
-      if (
-        modelOptions.find(
-          (model) => model.value === currentlySavedModel.value
-        ) === undefined
-      ) {
+      if (modelOptions.find((model) => model.value === currentlySavedModel.value) === undefined) {
         localStorage.setItem("model", JSON.stringify(modelOptions[0]));
         logit("🔀 Setting model to", modelOptions[0].value);
         currentlySavedModel = modelOptions[0];
       }
       setCurrentModel(currentlySavedModel);
       setModel(currentlySavedModel.value);
-      logit(
-        "⚙️ Getting model from localStorage: ",
-        JSON.stringify(currentlySavedModel)
-      );
-    }
-
-    if (!localStorage.getItem("gpuId")) {
-      localStorage.setItem("gpuId", "");
-      logit("⚙️ Setting gpuId to empty string");
-    } else {
-      const currentlySavedGpuId = localStorage.getItem("gpuId");
-      setGpuId(currentlySavedGpuId);
-      logit("⚙️ Getting gpuId from localStorage: ", currentlySavedGpuId);
+      logit("⚙️ Getting model from localStorage: ", JSON.stringify(currentlySavedModel));
     }
 
     if (!localStorage.getItem("rememberOutputFolder")) {
       logit("⚙️ Setting rememberOutputFolder to false");
       localStorage.setItem("rememberOutputFolder", "false");
     } else {
-      const currentlySavedRememberOutputFolder = localStorage.getItem(
-        "rememberOutputFolder"
-      );
+      const currentlySavedRememberOutputFolder = localStorage.getItem("rememberOutputFolder");
       logit(
         "⚙️ Getting rememberOutputFolder from localStorage: ",
         currentlySavedRememberOutputFolder
       );
-      setRememberOutputFolder(
-        currentlySavedRememberOutputFolder === "true" ? true : false
-      );
+      setRememberOutputFolder(currentlySavedRememberOutputFolder === "true" ? true : false);
     }
   }, []);
 
@@ -155,9 +136,14 @@ function SettingsTab({
     setCompression(e.target.value);
   };
 
-  const handleGpuIdChange = (e) => {
-    setGpuId(e.target.value);
-    localStorage.setItem("gpuId", e.target.value);
+  const handleOutputSuffixChange = (e) => {
+    setOutputSuffix(e.target.value);
+    localStorage.setItem("outputSuffix", e.target.value);
+  };
+
+  const handleOutputMetadataSuffixChange = (e) => {
+    setOutputMetadataSuffix(e.target.checked);
+    localStorage.setItem("outputSuffixMetadata", e.target.checked === true ? "true" : "false");
   };
 
   const copyOnClickHandler = () => {
@@ -175,17 +161,14 @@ function SettingsTab({
         <a
           className="btn-primary btn"
           href="https://github.com/upscayl/upscayl/wiki/"
-          target="_blank">
+          target="_blank"
+          rel="noreferrer"
+        >
           Read Wiki Guide
         </a>
-        {!featureFlags.APP_STORE_BUILD && <DonateButton />}
       </div>
 
-      <LogArea
-        copyOnClickHandler={copyOnClickHandler}
-        isCopied={isCopied}
-        logData={logData}
-      />
+      <LogArea copyOnClickHandler={copyOnClickHandler} isCopied={isCopied} logData={logData} />
 
       {/* THEME SELECTOR */}
       <ThemeSelect />
@@ -214,15 +197,22 @@ function SettingsTab({
         </>
       )}
 
+      <OutputSuffixInput
+        outputSuffix={outputSuffix}
+        handleOutputSuffixChange={handleOutputSuffixChange}
+      />
+
+      <OutputMetadataSuffixToggle
+        outputMetadataSuffix={outputMetadataSuffix}
+        setOutputMetadataSuffix={handleOutputMetadataSuffixChange}
+      />
+
       <SaveOutputFolderToggle
         rememberOutputFolder={rememberOutputFolder}
         setRememberOutputFolder={setRememberOutputFolder}
       />
 
       <OverwriteToggle overwrite={overwrite} setOverwrite={setOverwrite} />
-
-      {/* GPU ID INPUT */}
-      <GpuIdInput gpuId={gpuId} handleGpuIdChange={handleGpuIdChange} />
 
       {/* CUSTOM MODEL */}
       <CustomModelsFolderSelect
@@ -239,7 +229,8 @@ function SettingsTab({
             className="mb-5 rounded-btn p-1 mx-5 bg-success shadow-lg shadow-success/40 text-slate-50 animate-pulse text-sm"
             onClick={() => {
               setShow(true);
-            }}>
+            }}
+          >
             Introducing Upscayl Cloud
           </button>
 

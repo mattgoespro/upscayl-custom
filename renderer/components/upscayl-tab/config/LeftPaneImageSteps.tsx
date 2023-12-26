@@ -1,22 +1,23 @@
 import { useAtom, useAtomValue } from "jotai";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Select from "react-select";
 import { Tooltip } from "react-tooltip";
 import { themeChange } from "theme-change";
-import { modelsListAtom } from "../../../atoms/modelsListAtom";
-import useLog from "../../hooks/useLog";
+import { modelsListAtom } from "@/atoms/modelsListAtom";
+import { SelectChangeEvent } from "@/model/changeEvents";
+import { featureFlags } from "@common/feature-flags";
 import {
   noImageProcessingAtom,
   outputPathAtom,
   progressAtom,
-  scaleAtom,
+  scaleAtom
 } from "../../../atoms/userSettingsAtom";
-import { featureFlags } from "@common/feature-flags";
+import useLog from "../../hooks/useLog";
 
 interface IProps {
   selectImageHandler: () => Promise<void>;
   selectFolderHandler: () => Promise<void>;
-  handleModelChange: (e: any) => void;
+  handleModelChange: (e: SelectChangeEvent) => void;
   outputHandler: () => Promise<void>;
   upscaylHandler: () => Promise<void>;
   batchMode: boolean;
@@ -49,14 +50,14 @@ function LeftPaneImageSteps({
   setSaveImageAs,
   model,
   setModel,
-  setGpuId,
+  setGpuId
 }: IProps) {
   const [currentModel, setCurrentModel] = useState<{
     label: string;
     value: string;
   }>({
     label: null,
-    value: null,
+    value: null
   });
 
   const modelOptions = useAtomValue(modelsListAtom);
@@ -75,10 +76,7 @@ function LeftPaneImageSteps({
       localStorage.setItem("saveImageAs", "png");
     } else {
       const currentlySavedImageFormat = localStorage.getItem("saveImageAs");
-      logit(
-        "⚙️ Getting saveImageAs from localStorage: ",
-        currentlySavedImageFormat
-      );
+      logit("⚙️ Getting saveImageAs from localStorage: ", currentlySavedImageFormat);
       setSaveImageAs(currentlySavedImageFormat);
     }
 
@@ -93,10 +91,7 @@ function LeftPaneImageSteps({
       ) as (typeof modelOptions)[0];
       setCurrentModel(currentlySavedModel);
       setModel(currentlySavedModel.value);
-      logit(
-        "⚙️ Getting model from localStorage: ",
-        JSON.stringify(currentlySavedModel)
-      );
+      logit("⚙️ Getting model from localStorage: ", JSON.stringify(currentlySavedModel));
     }
 
     if (!localStorage.getItem("gpuId")) {
@@ -116,7 +111,7 @@ function LeftPaneImageSteps({
   const getUpscaleResolution = useCallback(() => {
     const newDimensions = {
       width: dimensions.width,
-      height: dimensions.height,
+      height: dimensions.height
     };
 
     let doubleScale = parseInt(scale) * parseInt(scale);
@@ -157,7 +152,8 @@ function LeftPaneImageSteps({
 
   return (
     <div
-      className={`animate-step-in animate flex h-screen flex-col gap-7 overflow-y-auto p-5 overflow-x-hidden`}>
+      className={`animate-step-in animate flex h-screen flex-col gap-7 overflow-y-auto p-5 overflow-x-hidden`}
+    >
       {/* BATCH OPTION */}
       <div className="flex flex-row items-center gap-2">
         <input
@@ -168,11 +164,13 @@ function LeftPaneImageSteps({
             setOutputPath("");
             setProgress("");
             setBatchMode((oldValue) => !oldValue);
-          }}></input>
+          }}
+        ></input>
         <p
           className="mr-1 inline-block cursor-help text-sm"
           data-tooltip-id="tooltip"
-          data-tooltip-content="This will let you Upscayl all files in a folder at once">
+          data-tooltip-content="This will let you Upscayl all files in a folder at once"
+        >
           Batch Upscayl
         </p>
       </div>
@@ -182,7 +180,8 @@ function LeftPaneImageSteps({
         <p className="step-heading">Step 1</p>
         <button
           className="btn-primary btn"
-          onClick={!batchMode ? selectImageHandler : selectFolderHandler}>
+          onClick={!batchMode ? selectImageHandler : selectFolderHandler}
+        >
           Select {batchMode ? "Folder" : "Image"}
         </button>
       </div>
@@ -196,9 +195,9 @@ function LeftPaneImageSteps({
           options={modelOptions}
           components={{
             IndicatorSeparator: () => null,
-            DropdownIndicator: () => null,
+            DropdownIndicator: () => null
           }}
-          onChange={(e) => {
+          onChange={(e: SelectChangeEvent) => {
             handleModelChange(e);
             setCurrentModel({ label: e.label, value: e.value });
           }}
@@ -223,15 +222,17 @@ function LeftPaneImageSteps({
             />
             <p
               className="cursor-pointer text-sm"
-              onClick={(e) => {
+              onClick={() => {
                 setDoubleUpscayl(!doubleUpscayl);
-              }}>
+              }}
+            >
               Double Upscayl
             </p>
             <button
               className="badge-info badge cursor-help"
               data-tooltip-id="tooltip"
-              data-tooltip-content="Enable this option to get a 16x upscayl (we just run upscayl twice). Note that this may not always work properly with all images, for example, images with really large resolutions.">
+              data-tooltip-content="Enable this option to get a 16x upscayl (we just run upscayl twice). Note that this may not always work properly with all images, for example, images with really large resolutions."
+            >
               i
             </button>
           </div>
@@ -239,10 +240,7 @@ function LeftPaneImageSteps({
       </div>
 
       {/* STEP 3 */}
-      <div
-        className="animate-step-in"
-        data-tooltip-content={outputPath}
-        data-tooltip-id="tooltip">
+      <div className="animate-step-in" data-tooltip-content={outputPath} data-tooltip-id="tooltip">
         <div className="step-heading flex items-center gap-2">
           <span>Step 3</span>
           {!outputPath && featureFlags.APP_STORE_BUILD && (
@@ -254,9 +252,7 @@ function LeftPaneImageSteps({
           )}
         </div>
         {!batchMode && !featureFlags.APP_STORE_BUILD && (
-          <p className="mb-2 text-sm">
-            Defaults to {!batchMode ? "Image's" : "Folder's"} path
-          </p>
+          <p className="mb-2 text-sm">Defaults to {!batchMode ? "Image's" : "Folder's"} path</p>
         )}
         <button className="btn-primary btn" onClick={outputHandler}>
           Set Output Folder
@@ -284,7 +280,8 @@ function LeftPaneImageSteps({
             progress.length > 0 || !outputPath
               ? () => alert("Please select an output folder first")
               : upscaylHandler
-          }>
+          }
+        >
           {progress.length > 0 ? "Upscayling⏳" : "Upscayl"}
         </button>
       </div>

@@ -68,15 +68,30 @@ const imageUpscayl = async (event, payload: ImageUpscaylPayload) => {
   }
 
   const desiredScale = payload.scale;
+  let suffix = "";
+  let metadata = "";
+
+  if (payload.outputMetadataSuffix) {
+    logit("📢 Adding metadata suffix to output file name");
+    metadata =
+      "_upscayl_" +
+      (noImageProcessing ? initialScale : desiredScale) +
+      initialScale +
+      "x_" +
+      model;
+  }
+
+  if (payload.outputSuffix) {
+    logit("📢 Adding suffix to output file name");
+    suffix = payload.outputSuffix;
+  }
 
   const outFile =
     outputDir +
     slash +
     fileName +
-    "_upscayl_" +
-    (noImageProcessing ? initialScale : desiredScale) +
-    "x_" +
-    model +
+    (suffix != null ? ` ${suffix}` : "") +
+    `${metadata != null ? `[${metadata}]` : ""}` +
     "." +
     saveImageAs;
 

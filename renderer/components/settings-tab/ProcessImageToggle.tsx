@@ -19,6 +19,7 @@ const ProcessImageToggle = ({
         type="checkbox"
         className="toggle"
         checked={noImageProcessing}
+        onChange={() => {}}
         onClick={() => {
           setNoImageProcessing(!noImageProcessing);
         }}

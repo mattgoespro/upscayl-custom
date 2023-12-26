@@ -1,6 +1,8 @@
 export type ImageUpscaylPayload = {
   imagePath: string;
   outputPath?: string;
+  outputSuffix?: string;
+  outputMetadataSuffix?: boolean;
   scale: string;
   model: string;
   gpuId: string;

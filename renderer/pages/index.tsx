@@ -1,16 +1,16 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
-import COMMAND from "../../electron/constants/commands";
-import { ReactCompareSlider } from "react-compare-slider";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import ProgressBar from "../components/upscayl-tab/view/ProgressBar";
-import RightPaneInfo from "../components/upscayl-tab/view/RightPaneInfo";
-import ImageOptions from "../components/upscayl-tab/view/ImageOptions";
-import LeftPaneImageSteps from "../components/upscayl-tab/config/LeftPaneImageSteps";
-import Tabs from "../components/Tabs";
-import SettingsTab from "../components/settings-tab";
 import { useAtom, useAtomValue } from "jotai";
+import { useState, useEffect, useCallback, DragEvent, SyntheticEvent } from "react";
+import { ReactCompareSlider } from "react-compare-slider";
+import { newsAtom } from "@/atoms/newsAtom";
+import { ImageMouseEvent, PasteHandlerEvent, SelectChangeEvent } from "@/model/changeEvents";
+import { featureFlags } from "@common/feature-flags";
+import {
+  BatchUpscaylPayload,
+  DoubleUpscaylPayload,
+  ImageUpscaylPayload
+} from "@common/types/types";
+import COMMAND from "../../electron/constants/commands";
 import { logAtom } from "../atoms/logAtom";
 import { modelsListAtom } from "../atoms/modelsListAtom";
 import {
@@ -20,19 +20,18 @@ import {
   noImageProcessingAtom,
   outputPathAtom,
   progressAtom,
-  scaleAtom,
+  scaleAtom
 } from "../atoms/userSettingsAtom";
-import useLog from "../components/hooks/useLog";
+import Footer from "../components/Footer";
+import Header from "../components/Header";
+import Tabs from "../components/Tabs";
 import { UpscaylCloudModal } from "../components/UpscaylCloudModal";
-import { featureFlags } from "@common/feature-flags";
-import {
-  BatchUpscaylPayload,
-  DoubleUpscaylPayload,
-  ImageUpscaylPayload,
-} from "@common/types/types";
-import { NewsModal } from "@/components/NewsModal";
-import { newsAtom, showNewsModalAtom } from "@/atoms/newsAtom";
-import matter from "gray-matter";
+import useLog from "../components/hooks/useLog";
+import SettingsTab from "../components/settings-tab";
+import LeftPaneImageSteps from "../components/upscayl-tab/config/LeftPaneImageSteps";
+import ImageOptions from "../components/upscayl-tab/view/ImageOptions";
+import ProgressBar from "../components/upscayl-tab/view/ProgressBar";
+import RightPaneInfo from "../components/upscayl-tab/view/RightPaneInfo";
 
 const Home = () => {
   const allowedFileTypes = ["png", "jpg", "jpeg", "webp"];
@@ -46,6 +45,8 @@ const Home = () => {
   const [batchFolderPath, setBatchFolderPath] = useState("");
   const [doubleUpscayl, setDoubleUpscayl] = useState(false);
   const [overwrite, setOverwrite] = useState(false);
+  const [outputSuffix, setOutputSuffix] = useState("");
+  const [outputMetadataSuffix, setOutputMetadataSuffix] = useState(false);
   const [upscaledBatchFolderPath, setUpscaledBatchFolderPath] = useState("");
   const [doubleUpscaylCounter, setDoubleUpscaylCounter] = useState(0);
   const [gpuId, setGpuId] = useState("");
@@ -54,7 +55,7 @@ const Home = () => {
   const [backgroundPosition, setBackgroundPosition] = useState("0% 0%");
   const [dimensions, setDimensions] = useState({
     width: null,
-    height: null,
+    height: null
   });
   const [selectedTab, setSelectedTab] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,15 +66,12 @@ const Home = () => {
   const [compression, setCompression] = useAtom(compressionAtom);
   const [progress, setProgress] = useAtom(progressAtom);
   const [batchMode, setBatchMode] = useAtom(batchModeAtom);
-  const [logData, setLogData] = useAtom(logAtom);
+  const [logData] = useAtom(logAtom);
   const [modelOptions, setModelOptions] = useAtom(modelsListAtom);
   const [scale] = useAtom(scaleAtom);
-  const [dontShowCloudModal, setDontShowCloudModal] = useAtom(
-    dontShowCloudModalAtom
-  );
+  const [dontShowCloudModal, setDontShowCloudModal] = useAtom(dontShowCloudModalAtom);
   const noImageProcessing = useAtomValue(noImageProcessingAtom);
-  const [news, setNews] = useAtom(newsAtom);
-  const [showNewsModal, setShowNewsModal] = useAtom(showNewsModalAtom);
+  const [news] = useAtom(newsAtom);
 
   const { logit } = useLog();
 
@@ -81,9 +79,7 @@ const Home = () => {
   // SET CONFIG VARIABLES ON FIRST RUN
   useEffect(() => {
     // UPSCAYL VERSION
-    const upscaylVersion = navigator?.userAgent?.match(
-      /Upscayl\/([\d\.]+\d+)/
-    )[1];
+    const upscaylVersion = navigator?.userAgent?.match(/Upscayl\/([\d\\.]+\d+)/)[1];
     setVersion(upscaylVersion);
   }, []);
 
@@ -111,20 +107,17 @@ const Home = () => {
       }
     };
     // OS
-    window.electron.on(
-      COMMAND.OS,
-      (_, data: "linux" | "mac" | "win" | undefined) => {
-        if (data) {
-          setOs(data);
-        }
+    window.electron.on(COMMAND.OS, (_, data: "linux" | "mac" | "win" | undefined) => {
+      if (data) {
+        setOs(data);
       }
-    );
+    });
     // LOG
     window.electron.on(COMMAND.LOG, (_, data: string) => {
       logit(`🐞 BACKEND REPORTED: `, data);
     });
     // SCALING AND CONVERTING
-    window.electron.on(COMMAND.SCALING_AND_CONVERTING, (_, data: string) => {
+    window.electron.on(COMMAND.SCALING_AND_CONVERTING, () => {
       setProgress("Processing the image...");
     });
     // UPSCAYL ERROR
@@ -192,15 +185,14 @@ const Home = () => {
       const newModelOptions = data.map((model) => {
         return {
           value: model,
-          label: model,
+          label: model
         };
       });
       // Add newModelsList to modelOptions and remove duplicates
       const combinedModelOptions = [...modelOptions, ...newModelOptions];
       const uniqueModelOptions = combinedModelOptions.filter(
         // Check if any model in the array appears more than once
-        (model, index, array) =>
-          array.findIndex((t) => t.value === model.value) === index
+        (model, index, array) => array.findIndex((t) => t.value === model.value) === index
       );
       setModelOptions(uniqueModelOptions);
     });
@@ -208,9 +200,7 @@ const Home = () => {
 
   // FETCH CUSTOM MODELS FROM CUSTOM MODELS PATH
   useEffect(() => {
-    const customModelsPath = JSON.parse(
-      localStorage.getItem("customModelsPath")
-    );
+    const customModelsPath = JSON.parse(localStorage.getItem("customModelsPath"));
     if (customModelsPath !== null) {
       window.electron.send(COMMAND.GET_MODELS_LIST, customModelsPath);
       logit("🎯 GET_MODELS_LIST: ", customModelsPath);
@@ -222,37 +212,6 @@ const Home = () => {
     // TODO: Disable on no internet
     try {
       return;
-      fetch("https://raw.githubusercontent.com/upscayl/upscayl/main/news.md", {
-        cache: "no-cache",
-      })
-        .then((res) => {
-          return res.text();
-        })
-        .then((result) => {
-          const newsData = result;
-          if (!newsData) {
-            console.log("📰 Could not fetch news data");
-            return;
-          }
-          const markdownData = matter(newsData);
-          if (!markdownData) return;
-          if (markdownData && markdownData.data.dontShow) {
-            return;
-          }
-          if (
-            markdownData &&
-            news &&
-            markdownData?.data?.version === news?.data?.version
-          ) {
-            console.log("📰 News is up to date");
-            if (showNewsModal === false) {
-              setShowNewsModal(false);
-            }
-          } else if (markdownData) {
-            setNews(matter(newsData));
-            setShowNewsModal(true);
-          }
-        });
     } catch (error) {
       console.log("Could not fetch Upscayl News");
     }
@@ -280,6 +239,20 @@ const Home = () => {
     }
   }, []);
 
+  useEffect(() => {
+    const currentlySavedOutputSuffix = localStorage.getItem("outputSuffix");
+    if (currentlySavedOutputSuffix) {
+      setOutputSuffix(currentlySavedOutputSuffix);
+    }
+  });
+
+  useEffect(() => {
+    const currentlySavedOutputMetadataSuffix = localStorage.getItem("outputSuffixMetadata");
+    if (currentlySavedOutputMetadataSuffix) {
+      setOutputMetadataSuffix(currentlySavedOutputMetadataSuffix === "true");
+    }
+  });
+
   // IMAGE PATH VALIDATION
   useEffect(() => {}, [imagePath]);
 
@@ -293,12 +266,14 @@ const Home = () => {
     logit("🔄 Resetting image paths");
     setDimensions({
       width: null,
-      height: null,
+      height: null
     });
     setProgress("");
     setImagePath("");
     setUpscaledImagePath("");
     setBatchFolderPath("");
+    setOutputSuffix("");
+    setOutputMetadataSuffix(false);
     setUpscaledBatchFolderPath("");
   };
 
@@ -319,7 +294,7 @@ const Home = () => {
   };
 
   // HANDLERS
-  const handleMouseMove = useCallback((e: any) => {
+  const handleMouseMove = useCallback((e: ImageMouseEvent) => {
     const { left, top, width, height } = e.target.getBoundingClientRect();
     const x = ((e.pageX - left) / width) * 100;
     const y = ((e.pageY - top) / height) * 100;
@@ -328,11 +303,11 @@ const Home = () => {
 
   const selectImageHandler = async () => {
     resetImagePaths();
-    var path = await window.electron.invoke(COMMAND.SELECT_FILE);
+    const path = await window.electron.invoke<string>(COMMAND.SELECT_FILE);
     if (path === null) return;
     logit("🖼 Selected Image Path: ", path);
     setImagePath(path);
-    var dirname = path.match(/(.*)[\/\\]/)[1] || "";
+    const dirname = path.match(/(.*)[\\/\\]/)[1] || "";
     logit("📁 Selected Image Directory: ", dirname);
     if (!featureFlags.APP_STORE_BUILD) {
       setOutputPath(dirname);
@@ -342,7 +317,7 @@ const Home = () => {
 
   const selectFolderHandler = async () => {
     resetImagePaths();
-    var path = await window.electron.invoke(COMMAND.SELECT_FOLDER);
+    const path = await window.electron.invoke<string>(COMMAND.SELECT_FOLDER);
     if (path !== null) {
       logit("🖼 Selected Folder Path: ", path);
       setBatchFolderPath(path);
@@ -354,13 +329,10 @@ const Home = () => {
     }
   };
 
-  const handleModelChange = (e: any) => {
+  const handleModelChange = (e: SelectChangeEvent) => {
     setModel(e.value);
     logit("🔀 Model changed: ", e.value);
-    localStorage.setItem(
-      "model",
-      JSON.stringify({ label: e.label, value: e.value })
-    );
+    localStorage.setItem("model", JSON.stringify({ label: e.label, value: e.value }));
   };
 
   // DRAG AND DROP HANDLERS
@@ -368,15 +340,15 @@ const Home = () => {
     e.preventDefault();
     console.log("drag enter");
   };
-  const handleDragLeave = (e) => {
-    e.preventDefault();
+  const handleDragLeave = (event: DragEvent) => {
+    event.preventDefault();
     console.log("drag leave");
   };
-  const handleDragOver = (e) => {
-    e.preventDefault();
+  const handleDragOver = (event: DragEvent) => {
+    event.preventDefault();
     console.log("drag over");
   };
-  const openFolderHandler = (e) => {
+  const openFolderHandler = () => {
     logit("📂 OPEN_FOLDER: ", upscaledBatchFolderPath);
     window.electron.send(COMMAND.OPEN_FOLDER, upscaledBatchFolderPath);
   };
@@ -384,10 +356,7 @@ const Home = () => {
   const handleDrop = (e) => {
     e.preventDefault();
     resetImagePaths();
-    if (
-      e.dataTransfer.items.length === 0 ||
-      e.dataTransfer.files.length === 0
-    ) {
+    if (e.dataTransfer.items.length === 0 || e.dataTransfer.files.length === 0) {
       logit("👎 No valid files dropped");
       alert("Please drag and drop an image");
       return;
@@ -396,44 +365,38 @@ const Home = () => {
     const filePath = e.dataTransfer.files[0].path;
     const extension = e.dataTransfer.files[0].name.split(".").at(-1);
     logit("⤵️ Dropped file: ", JSON.stringify({ type, filePath, extension }));
-    if (
-      !type.includes("image") ||
-      !allowedFileTypes.includes(extension.toLowerCase())
-    ) {
+    if (!type.includes("image") || !allowedFileTypes.includes(extension.toLowerCase())) {
       logit("🚫 Invalid file dropped");
       alert("Please drag and drop an image");
     } else {
       logit("🖼 Setting image path: ", filePath);
       setImagePath(filePath);
-      var dirname = filePath.match(/(.*)[\/\\]/)[1] || "";
+      const dirname = filePath.match(/(.*)[\\/\\]/)[1] || "";
       logit("🗂 Setting output path: ", dirname);
       setOutputPath(dirname);
       validateImagePath(filePath);
     }
   };
 
-  const handlePaste = (e) => {
+  const handlePaste = (event: PasteHandlerEvent) => {
     resetImagePaths();
-    e.preventDefault();
-    const type = e.clipboardData.items[0].type;
-    const filePath = e.clipboardData.files[0].path;
-    const extension = e.clipboardData.files[0].name.split(".").at(-1);
+    event.preventDefault();
+    const type = event.clipboardData.items[0].type;
+    const filePath = event.clipboardData.files[0].path;
+    const extension = event.clipboardData.files[0].name.split(".").at(-1);
     logit("📋 Pasted file: ", JSON.stringify({ type, filePath, extension }));
-    if (
-      !type.includes("image") &&
-      !allowedFileTypes.includes(extension.toLowerCase())
-    ) {
+    if (!type.includes("image") && !allowedFileTypes.includes(extension.toLowerCase())) {
       alert("Please drag and drop an image");
     } else {
       setImagePath(filePath);
-      var dirname = filePath.match(/(.*)[\/\\]/)[1] || "";
+      const dirname = filePath.match(/(.*)[\\/\\]/)[1] || "";
       logit("🗂 Setting output path: ", dirname);
       setOutputPath(dirname);
     }
   };
 
   const outputHandler = async () => {
-    var path = await window.electron.invoke(COMMAND.SELECT_FOLDER);
+    const path = await window.electron.invoke<string>(COMMAND.SELECT_FOLDER);
     if (path !== null) {
       logit("🗂 Setting Output Path: ", path);
       setOutputPath(path);
@@ -463,7 +426,7 @@ const Home = () => {
           saveImageAs,
           scale,
           noImageProcessing,
-          compression: compression.toString(),
+          compression: compression.toString()
         });
         logit("🏁 DOUBLE_UPSCAYL");
       } else if (batchMode) {
@@ -477,7 +440,7 @@ const Home = () => {
           saveImageAs,
           scale,
           noImageProcessing,
-          compression: compression.toString(),
+          compression: compression.toString()
         });
         logit("🏁 FOLDER_UPSCAYL");
       } else {
@@ -485,13 +448,15 @@ const Home = () => {
         window.electron.send<ImageUpscaylPayload>(COMMAND.UPSCAYL, {
           imagePath,
           outputPath,
+          outputSuffix,
+          outputMetadataSuffix,
           model,
           gpuId: gpuId.length === 0 ? null : gpuId,
           saveImageAs,
           scale,
           overwrite,
           noImageProcessing,
-          compression: compression.toString(),
+          compression: compression.toString()
         });
         logit("🏁 UPSCAYL");
       }
@@ -517,6 +482,14 @@ const Home = () => {
     );
   }
 
+  function handleImageLoadEvent(event: SyntheticEvent<HTMLImageElement, Event>) {
+    const target = event.target as HTMLImageElement;
+    setDimensions({
+      width: target.naturalWidth,
+      height: target.naturalHeight
+    });
+  }
+
   return (
     <div className="flex h-screen w-screen flex-row overflow-hidden bg-base-300">
       <div className={`flex h-screen w-128 flex-col bg-base-100`}>
@@ -527,9 +500,7 @@ const Home = () => {
             setDontShowCloudModal={setDontShowCloudModal}
           />
         )}
-        {window.electron.platform === "mac" && (
-          <div className="pt-8 mac-titlebar"></div>
-        )}
+        {window.electron.platform === "mac" && <div className="pt-8 mac-titlebar"></div>}
         {/* HEADER */}
         <Header version={version} />
         {!dontShowCloudModal && featureFlags.SHOW_UPSCAYL_CLOUD_INFO && (
@@ -537,19 +508,20 @@ const Home = () => {
             className="mb-5 rounded-btn p-1 mx-5 bg-success shadow-lg shadow-success/40 text-slate-50 animate-pulse text-sm"
             onClick={() => {
               setShowCloudModal(true);
-            }}>
+            }}
+          >
             Introducing Upscayl Cloud
           </button>
         )}
 
-        <NewsModal
+        {/* <NewsModal
           show={showNewsModal}
           setShow={(val: boolean) => {
             setShowNewsModal(val);
             setNews((prev) => ({ ...prev, seen: true }));
           }}
           news={news}
-        />
+        /> */}
 
         <Tabs selectedTab={selectedTab} setSelectedTab={setSelectedTab} />
 
@@ -586,6 +558,10 @@ const Home = () => {
             logData={logData}
             overwrite={overwrite}
             setOverwrite={setOverwrite}
+            outputSuffix={outputSuffix}
+            setOutputSuffix={setOutputSuffix}
+            outputMetadataSuffix={outputMetadataSuffix}
+            setOutputMetadataSuffix={setOutputMetadataSuffix}
             os={os}
             show={showCloudModal}
             setShow={setShowCloudModal}
@@ -600,9 +576,9 @@ const Home = () => {
       <div
         className="relative flex h-screen w-full flex-col items-center justify-center"
         onDrop={(e) => handleDrop(e)}
-        onDragOver={(e) => handleDragOver(e)}
-        onDragEnter={(e) => handleDragEnter(e)}
-        onDragLeave={(e) => handleDragLeave(e)}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
         onDoubleClick={() => {
           if (batchMode) {
             selectFolderHandler();
@@ -610,7 +586,8 @@ const Home = () => {
             selectImageHandler();
           }
         }}
-        onPaste={(e) => handlePaste(e)}>
+        onPaste={handlePaste}
+      >
         {window.electron.platform === "mac" && (
           <div className="absolute top-0 w-full h-8 mac-titlebar"></div>
         )}
@@ -627,60 +604,45 @@ const Home = () => {
         ) : null}
 
         {/* DEFAULT PANE INFO */}
-        {((!batchMode &&
-          imagePath.length === 0 &&
-          upscaledImagePath.length === 0) ||
-          (batchMode &&
-            batchFolderPath.length === 0 &&
-            upscaledBatchFolderPath.length === 0)) && (
+        {((!batchMode && imagePath.length === 0 && upscaledImagePath.length === 0) ||
+          (batchMode && batchFolderPath.length === 0 && upscaledBatchFolderPath.length === 0)) && (
           <RightPaneInfo version={version} batchMode={batchMode} />
         )}
 
         {/* SHOW SELECTED IMAGE */}
-        {!batchMode &&
-          upscaledImagePath.length === 0 &&
-          imagePath.length > 0 && (
-            <>
-              <ImageOptions
-                zoomAmount={zoomAmount}
-                setZoomAmount={setZoomAmount}
-                resetImagePaths={resetImagePaths}
-                hideZoomOptions={true}
-              />
-              <img
-                src={"file:///" + imagePath}
-                onLoad={(e: any) => {
-                  setDimensions({
-                    width: e.target.naturalWidth,
-                    height: e.target.naturalHeight,
-                  });
-                }}
-                draggable="false"
-                alt=""
-                className="h-full w-full bg-gradient-to-br from-base-300 to-base-100 object-contain"
-              />
-            </>
-          )}
+        {!batchMode && upscaledImagePath.length === 0 && imagePath.length > 0 && (
+          <>
+            <ImageOptions
+              zoomAmount={zoomAmount}
+              setZoomAmount={setZoomAmount}
+              resetImagePaths={resetImagePaths}
+              hideZoomOptions={true}
+            />
+            <img
+              src={"file:///" + imagePath}
+              onLoad={handleImageLoadEvent}
+              draggable="false"
+              alt=""
+              className="h-full w-full bg-gradient-to-br from-base-300 to-base-100 object-contain"
+            />
+          </>
+        )}
 
         {/* BATCH UPSCALE SHOW SELECTED FOLDER */}
-        {batchMode &&
-          upscaledBatchFolderPath.length === 0 &&
-          batchFolderPath.length > 0 && (
-            <p className="select-none text-neutral-50">
-              <span className="font-bold">Selected folder:</span>{" "}
-              {batchFolderPath}
-            </p>
-          )}
+        {batchMode && upscaledBatchFolderPath.length === 0 && batchFolderPath.length > 0 && (
+          <p className="select-none text-neutral-50">
+            <span className="font-bold">Selected folder:</span> {batchFolderPath}
+          </p>
+        )}
 
         {/* BATCH UPSCALE DONE INFO */}
         {batchMode && upscaledBatchFolderPath.length > 0 && (
           <>
-            <p className="select-none py-4 font-bold text-neutral-50">
-              All done!
-            </p>
+            <p className="select-none py-4 font-bold text-neutral-50">All done!</p>
             <button
               className="btn btn-primary bg-gradient-blue rounded-btn p-3 font-medium text-white/90 transition-colors"
-              onClick={openFolderHandler}>
+              onClick={openFolderHandler}
+            >
               Open Upscayled Folder
             </button>
           </>
@@ -709,7 +671,7 @@ const Home = () => {
                     style={{
                       objectFit: "contain",
                       backgroundPosition: "0% 0%",
-                      transformOrigin: backgroundPosition,
+                      transformOrigin: backgroundPosition
                     }}
                     className={`h-full w-full bg-gradient-to-br from-base-300 to-base-100 transition-transform group-hover:scale-[${zoomAmount}]`}
                   />
@@ -727,7 +689,7 @@ const Home = () => {
                     style={{
                       objectFit: "contain",
                       backgroundPosition: "0% 0%",
-                      transformOrigin: backgroundPosition,
+                      transformOrigin: backgroundPosition
                     }}
                     onMouseMove={handleMouseMove}
                     className={`h-full w-full bg-gradient-to-br from-base-300 to-base-100 transition-transform group-hover:scale-[${zoomAmount}]`}
